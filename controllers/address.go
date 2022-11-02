@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -13,9 +14,9 @@ import (
 )
 
 func AddAddress() gin.HandlerFunc {
-	return func(c *gin.Context){
+	return func(c *gin.Context) {
 		user_id := c.Query("id")
-		if user_id == ""{
+		if user_id == "" {
 			c.Header("Content-Type", "application/json")
 			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid code"})
 			c.Abort()
@@ -36,7 +37,7 @@ func AddAddress() gin.HandlerFunc {
 
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
-		match_filter := bson.D{{Key: "$match", Value: bson.D{primitive.E{Key:"_id", Value: addresses}}}}
+		match_filter := bson.D{{Key: "$match", Value: bson.D{primitive.E{Key: "_id", Value: addresses}}}}
 		unwind := bson.D{{Key: "$unwind", Value: bson.D{primitive.E{Key: "path", Value: "$address"}}}}
 		group := bson.D{
 			{Key: "$group", Value: bson.D{
@@ -48,6 +49,29 @@ func AddAddress() gin.HandlerFunc {
 		if err != nil {
 			c.IndentedJSON(500, "Internal server error")
 		}
+
+		var addressInfo []bson.M
+		if err = pointcursor.All(ctx, &addressInfo); err != nil {
+			panic(err)
+		}
+
+		var size int32
+		for _, address_no := range addressInfo {
+			count := address_no["count"]
+			size = count.(int32)
+		}
+		if size < 2 {
+			filter := bson.D{primitive.E{Key:"_id", Value: address}}
+			update := bson.D{{Key:"$push", Value: bson.D{primitive.E{Key:"address", Value: addresses}}}}
+			_, err := UserCollection.UpdateOne(ctx, filter, update)
+			if err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			c.IndentedJSON(400, "Not Allowed")
+		}
+		defer cancel()
+		ctx.Done()
 	}
 }
 
