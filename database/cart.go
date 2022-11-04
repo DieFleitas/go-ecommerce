@@ -47,6 +47,7 @@ func AddProductToCart(ctx context.Context, prodCollection, userCollection *mongo
 	if err != nil {
 		return ErrCantUpdateUser
 	}
+	return nil
 }
 
 func RemoveCartItem() {
