@@ -55,7 +55,6 @@ func TokenGenerator(email, firstname, lastname, uid string) (signedtoken, signed
 	}
 
 	return token, refreshtoken, nil
-
 }
 
 func ValidateToken(signedtoken string) (claims *SignedDetails, msg string) {
